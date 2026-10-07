@@ -8,7 +8,7 @@ Fala com o Chromium do perfil do bot pelo protocolo de depuração (CDP), na por
   pc press --as <perfil> N            clica no elemento N (eventos de mouse reais, depois de rolar até ele)
   pc set --as <perfil> N "texto"      escreve no campo N (substitui o que havia); num <select>, escolhe a opção
 """
-import base64, json, os, socket, struct, sys, urllib.request
+import base64, json, os, socket, struct, sys, time, urllib.request
 
 LIMIT = 120  # elementos por leitura: o resto fica para depois de rolar
 
@@ -142,7 +142,7 @@ def tab(profile):
 
 def center(c, n):
     r = c.js(f"""(() => {{ const e = document.querySelector('[data-pc-id="{int(n)}"]');
-      if (!e) return null; e.scrollIntoView({{block: 'center', inline: 'center'}});
+      if (!e) return null; e.scrollIntoView({{block: 'nearest', inline: 'nearest'}});
       const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, e.tagName]; }})()""")
     if not r:
         raise SystemExit(f"não achei o elemento {n}: a página mudou? rode company pc ui de novo")
@@ -161,10 +161,20 @@ def main():
     if len(a) < 3 or a[1] != "--as":
         raise SystemExit(__doc__)
     action, profile, rest = a[0], a[2], a[3:]
-    c = tab(profile)
     if action == "ui":
-        print(c.js(SNAPSHOT))
-    elif action == "press" and rest:
+        # Logo depois de um pc open o navegador ainda está abrindo, ou a aba em about:blank/carregando: espera até 10 s.
+        for _ in range(20):
+            try:
+                c = tab(profile)
+                if c.js("location.href !== 'about:blank' && document.readyState === 'complete'"):
+                    break
+            except SystemExit:
+                pass
+            time.sleep(0.5)
+        print(tab(profile).js(SNAPSHOT))
+        return
+    c = tab(profile)
+    if action == "press" and rest:
         press(c, rest[0])
         print("ok")
     elif action == "set" and len(rest) >= 2:
