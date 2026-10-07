@@ -7,6 +7,8 @@ Fala com o Chromium do perfil do bot pelo protocolo de depuração (CDP), na por
   pc ui --as <perfil>                 elementos interativos visíveis, numerados: [12] botão "Comprar"
   pc press --as <perfil> N            clica no elemento N (eventos de mouse reais, depois de rolar até ele)
   pc set --as <perfil> N "texto"      escreve no campo N (substitui o que havia); num <select>, escolhe a opção
+  pc text --as <perfil>               o texto da página (números de relatórios, legendas de uma chamada, artigos)
+  pc upload --as <perfil> N arquivo   envia um arquivo do PC pelo campo de upload N (ou pelo da página, se N não for um)
 """
 import base64, json, os, socket, struct, sys, time, urllib.request
 
@@ -61,6 +63,16 @@ SNAPSHOT = r"""
           below > 40 ? '(a página continua para baixo: company pc scroll para ver mais e company pc ui de novo)' : ''].filter(Boolean).join('\n');
 })()
 """.replace("__LIMIT__", str(LIMIT))
+
+
+# O texto que a pessoa lê na página, sem menus repetidos de linhas em branco; limitado para caber num turno.
+TEXT = r"""
+(() => {
+  const t = (document.body?.innerText || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  const max = 20000;
+  return document.title + ' — ' + location.href + '\n' + (t.length > max ? t.slice(0, max) + '\n(… cortado: role a página ou peça um trecho)' : t);
+})()
+"""
 
 
 class CDP:
@@ -161,7 +173,7 @@ def main():
     if len(a) < 3 or a[1] != "--as":
         raise SystemExit(__doc__)
     action, profile, rest = a[0], a[2], a[3:]
-    if action == "ui":
+    if action in ("ui", "text"):
         # Logo depois de um pc open o navegador ainda está abrindo, ou a aba em about:blank/carregando: espera até 10 s.
         for _ in range(20):
             try:
@@ -171,7 +183,7 @@ def main():
             except SystemExit:
                 pass
             time.sleep(0.5)
-        print(tab(profile).js(SNAPSHOT))
+        print(tab(profile).js(SNAPSHOT if action == "ui" else TEXT))
         return
     c = tab(profile)
     if action == "press" and rest:
@@ -193,6 +205,19 @@ def main():
             c.js(f"""(() => {{ const e = document.querySelector('[data-pc-id="{int(n)}"]');
               if (e.select) e.select(); else document.execCommand('selectAll'); }})()""")
             c.call("Input.insertText", text=text)
+        print("ok")
+    elif action == "upload" and len(rest) >= 2:
+        n, path = rest[0], os.path.abspath(rest[1])
+        if not os.path.isfile(path):
+            raise SystemExit(f"arquivo não encontrado: {path}")
+        # O campo N, se for de arquivo; senão o campo de arquivo da página (os sites costumam escondê-lo atrás de um botão).
+        r = c.call("Runtime.evaluate", expression=f"""(() => {{ const e = document.querySelector('[data-pc-id="{int(n)}"]');
+          if (e && e.type === 'file') return e;
+          return (e && e.closest('form, label, div')?.querySelector('input[type=file]')) || document.querySelector('input[type=file]'); }})()""")
+        oid = r.get("result", {}).get("objectId")
+        if not oid:
+            raise SystemExit("não achei um campo de upload nesta página: clique no botão de enviar (pc press) e tente de novo")
+        c.call("DOM.setFileInputFiles", files=[path], objectId=oid)
         print("ok")
     else:
         raise SystemExit(__doc__)
