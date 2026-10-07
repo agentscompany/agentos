@@ -24,9 +24,10 @@ ENV PATH=/home/ac/.local/bin:/home/ac/.grok/bin:/home/ac/.opencode/bin:/usr/loca
 # assim a mesma imagem pronta serve no Mac (501) e no Linux (1000).
 RUN useradd -m -u 1000 -s /bin/bash ac && echo 'ac ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ac
 
-# Chromium dentro de container: sem sandbox do Chrome, sem telas de boas-vindas.
+# Chromium dentro de container: sem sandbox do Chrome, sem telas de boas-vindas; depuração (CDP) numa porta
+# aleatória só dentro do PC, anotada em <perfil>/DevToolsActivePort (o `pc ui` lê a página por ela).
 COPY <<'EOF' /etc/chromium.d/agentscompany
-export CHROMIUM_FLAGS="$CHROMIUM_FLAGS --no-sandbox --test-type --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic --hide-crash-restore-bubble"
+export CHROMIUM_FLAGS="$CHROMIUM_FLAGS --no-sandbox --test-type --no-first-run --no-default-browser-check --disable-dev-shm-usage --password-store=basic --hide-crash-restore-bubble --remote-debugging-port=0"
 EOF
 
 # Desktop de verdade: janelas com barra de título escura (minimizar/maximizar/fechar), abrindo
@@ -196,9 +197,12 @@ PY
             ""|browser|chromium) setsid chromium >/dev/null 2>&1 & ;;
             *)        setsid chromium "$1" >/dev/null 2>&1 & ;;
           esac ;;
+  ui|press|set) exec pc-ui "$@" ;;   # a página em texto e ações pelo número do elemento (pc-ui)
   *) echo "uso: pc screenshot [arquivo] | click X Y | double X Y | type texto | key ctrl+l | scroll X Y N | open url|terminal|files" >&2; exit 2 ;;
 esac
 EOF
+
+COPY --chmod=755 pc-ui.py /usr/local/bin/pc-ui
 
 WORKDIR /home/ac
 ENV HOME=/home/ac
