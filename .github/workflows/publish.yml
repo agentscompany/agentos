@@ -16,6 +16,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Driver version
+        id: driver
+        run: echo "ref=$(cat DRIVER_VERSION)" >> "$GITHUB_OUTPUT"
+      # The driver is a private repository: read with a read-only deploy key (DRIVER_DEPLOY_KEY) or a fine-grained
+      # token limited to reading it (DRIVER_TOKEN). Neither is printed.
+      - uses: actions/checkout@v4
+        with:
+          repository: agentscompany/driver
+          ref: ${{ steps.driver.outputs.ref }}
+          path: driver
+          ssh-key: ${{ secrets.DRIVER_DEPLOY_KEY }}
+          token: ${{ secrets.DRIVER_TOKEN || github.token }}
+          persist-credentials: false
       - name: Versão
         id: v
         run: echo "version=${{ github.event.inputs.version || github.ref_name }}" | sed 's/=v/=/' >> "$GITHUB_OUTPUT"

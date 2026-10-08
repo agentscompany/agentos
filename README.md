@@ -25,12 +25,14 @@ prepares the home directory and starts the desktop as `ac` (`pc-desktop`).
 - The bots' CLIs are not part of the image: the daemon installs them on demand into the home directory, using the
   official installers.
 
-**The `pc` command** (what bots use on screen, through `company pc …`):
-
-    pc screenshot [file]       pc click X Y [button]    pc double X Y     pc move X Y
-    pc type text               pc key ctrl+l            pc scroll X Y N   pc tint #rrggbb
-    pc open url|terminal|files     pc open --as <profile> <#rrggbb> [url]   (Chromium in the bot's profile and color)
+**The `pc` and `desk` commands** come from the [driver](https://github.com/agentscompany/driver), installed at a fixed
+release (the tag in `DRIVER_VERSION`): windows, one window's elements as text plus a screenshot, actions by element
+number, and pixel actions. Bots use `pc` through `company pc …`; agents on a [Desks](https://github.com/agentscompany/desks)
+desk use `desk`. `tmux` is installed for Desks' persistent agent sessions.
 
 ## Building locally
 
+The driver is private: check out its release first (the CI does the same with a read-only key).
+
+    git clone --depth 1 --branch "$(cat DRIVER_VERSION)" git@github.com:agentscompany/driver.git driver
     docker build -t agentos .

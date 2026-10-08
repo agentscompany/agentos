@@ -6,10 +6,10 @@ FROM debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8 TZ=America/Sao_Paulo
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      tigervnc-standalone-server tigervnc-tools openbox picom hsetroot xdotool scrot \
+      tigervnc-standalone-server tigervnc-tools openbox picom hsetroot \
       chromium xfce4-terminal thunar websockify dbus-x11 xdg-utils socat \
       fonts-noto-color-emoji fonts-noto-cjk \
-      sudo curl ca-certificates git python3 procps less nano unzip xz-utils tzdata \
+      sudo curl ca-certificates git python3 procps less nano unzip xz-utils tzdata tmux \
  && rm -rf /var/lib/apt/lists/*
 
 # noVNC como arquivos estáticos (o pacote do Debian puxaria o Node.js inteiro).
@@ -145,65 +145,11 @@ if [ -n "$AC_OPEN_URL" ] && curl -sS --fail -H 'Expect:' --data-binary "$1" "$AC
 exec /usr/bin/xdg-open "$@"
 EOF
 
-# Ações na tela, usadas pelo app (`company pc …`).
-COPY --chmod=755 <<'EOF' /usr/local/bin/pc
-#!/bin/sh
-export DISPLAY=:1
-case "$1" in
-  screenshot) f="${2:-/tmp/screen.png}"; scrot -o -p "$f" && echo "$f" ;;
-  click)  xdotool mousemove "$2" "$3" click "${4:-1}" ;;
-  double) xdotool mousemove "$2" "$3" click --repeat 2 1 ;;
-  move)   xdotool mousemove "$2" "$3" ;;
-  type)   shift; xdotool type --delay 12 -- "$*" ;;
-  key)    shift; xdotool key -- "$@" ;;
-  scroll) n="${4:-3}"; b=5; if [ "$n" -lt 0 ]; then b=4; n=$((-n)); fi; xdotool mousemove "$2" "$3" click --repeat "$n" "$b" ;;
-  tint)   hsetroot -solid "$2" ;;
-  open)   shift
-          # --as <perfil> <#rrggbb>: Chromium no perfil do bot, com um tema completo gerado da cor dele
-          # (moldura, abas, barra, campo de endereço e nova aba), carregado como extensão de tema.
-          if [ "$1" = "--as" ]; then
-            d="$HOME/.config/chromium-bots/$2"; color="$3"; shift 3
-            mkdir -p "$d/Default" "$d/theme"
-            python3 - "$d/theme/manifest.json" "$color" <<'PY'
-import json, sys
-path, hexc = sys.argv[1], sys.argv[2].lstrip("#")
-base = [int(hexc[i:i + 2], 16) for i in (0, 2, 4)]
-def mix(c, t, f): return [round(c[i] + (t[i] - c[i]) * f) for i in range(3)]
-white, black, ink = [255, 255, 255], [0, 0, 0], [30, 30, 32]
-lum = (0.299 * base[0] + 0.587 * base[1] + 0.114 * base[2]) / 255
-on_frame = ink if lum > 0.6 else white          # texto das abas inativas legível em cores escuras
-colors = {
-    "frame": mix(base, white, 0.1), "frame_inactive": mix(base, white, 0.3),
-    "toolbar": mix(base, white, 0.7), "toolbar_button_icon": mix(base, black, 0.5),
-    "tab_text": ink, "tab_background_text": on_frame, "tab_background_text_inactive": on_frame,
-    "omnibox_background": mix(base, white, 0.85), "omnibox_text": ink, "bookmark_text": ink,
-    "ntp_background": mix(base, white, 0.65), "ntp_text": ink, "ntp_link": mix(base, black, 0.4),
-}
-manifest = {"manifest_version": 3, "name": "AgentsCompany", "version": "1." + str(int(hexc, 16)),
-            "theme": {"colors": colors}}
-json.dump(manifest, open(path, "w"))
-PY
-            # O tema entra num processo ainda sem janela: assim o aviso "Installed theme" não tem onde aparecer
-            # (com --load-extension o Chromium reinstala o tema a cada processo novo).
-            if ! pgrep -f -- "--user-data-dir=$d( |$)" >/dev/null; then
-              setsid chromium --no-startup-window --user-data-dir="$d" --load-extension="$d/theme" >/dev/null 2>&1 &
-              for i in 1 2 3 4 5 6 7 8 9 10; do [ -e "$d/SingletonSocket" ] && break; sleep 0.3; done; sleep 1
-            fi
-            setsid chromium --user-data-dir="$d" ${1:+"$1"} >/dev/null 2>&1 &
-            exit 0
-          fi
-          case "$1" in
-            terminal) shift; setsid xfce4-terminal --hide-menubar --hide-toolbar --hide-scrollbar "$@" >/dev/null 2>&1 & ;;
-            files)    setsid thunar >/dev/null 2>&1 & ;;
-            ""|browser|chromium) setsid chromium >/dev/null 2>&1 & ;;
-            *)        setsid chromium "$1" >/dev/null 2>&1 & ;;
-          esac ;;
-  ui|press|set|text|upload) exec pc-ui "$@" ;;   # a página em texto e ações pelo número do elemento (pc-ui)
-  *) echo "uso: pc ui | press N | set N texto | text | upload N arquivo | screenshot [arquivo] | click X Y | double X Y | type texto | key ctrl+l | scroll X Y N | open url|terminal|files" >&2; exit 2 ;;
-esac
-EOF
-
-COPY --chmod=755 pc-ui.py /usr/local/bin/pc-ui
+# The computer-use driver (pc, desk, desk-a11y, pc-ui): github.com/agentscompany/driver (private), at the release in
+# DRIVER_VERSION, checked out into ./driver before the build (the CI does it). `company pc …` (AgentsCompany) and
+# `desk …` (Desks agents) are its commands.
+COPY driver /tmp/driver
+RUN sh /tmp/driver/install.sh && rm -rf /tmp/driver
 
 WORKDIR /home/ac
 ENV HOME=/home/ac
