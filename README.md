@@ -25,14 +25,15 @@ prepares the home directory and starts the desktop as `ac` (`pc-desktop`).
 - The bots' CLIs are not part of the image: the daemon installs them on demand into the home directory, using the
   official installers.
 
-**The `pc` and `desk` commands** come from the [driver](https://github.com/agentscompany/driver), installed at a fixed
-release (the tag in `DRIVER_VERSION`): windows, one window's elements as text plus a screenshot, actions by element
-number, and pixel actions. Bots use `pc` through `company pc …`; agents on a [Desks](https://github.com/agentscompany/desks)
-desk use `desk`. `tmux` is installed for Desks' persistent agent sessions.
+**The `hands` command** comes from [Hands](https://github.com/agentscompany/hands) (computer use for agents),
+installed at a fixed release (the tag in `HANDS_VERSION`): windows, one window's elements as text plus a screenshot,
+actions by element number, and pixel actions. Bots use it through `company pc …` (`pc` is an old name of `hands`);
+agents on a [Desks](https://github.com/agentscompany/desks) desk run `hands` (or `desk`, its other old name). `tmux` is
+installed for Desks' persistent agent sessions.
 
 ## Building locally
 
-The driver is private: check out its release first (the CI does the same with a read-only key).
+Hands is private: check out its release first (the CI does the same with a read-only key).
 
-    git clone --depth 1 --branch "$(cat DRIVER_VERSION)" git@github.com:agentscompany/driver.git driver
+    git clone --depth 1 --branch "$(cat HANDS_VERSION)" git@github.com:agentscompany/hands.git hands
     docker build -t agentos .

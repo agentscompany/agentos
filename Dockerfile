@@ -145,11 +145,11 @@ if [ -n "$AC_OPEN_URL" ] && curl -sS --fail -H 'Expect:' --data-binary "$1" "$AC
 exec /usr/bin/xdg-open "$@"
 EOF
 
-# The computer-use driver (pc, desk, desk-a11y, pc-ui): github.com/agentscompany/driver (private), at the release in
-# DRIVER_VERSION, checked out into ./driver before the build (the CI does it). `company pc …` (AgentsCompany) and
-# `desk …` (Desks agents) are its commands.
-COPY driver /tmp/driver
-RUN sh /tmp/driver/install.sh && rm -rf /tmp/driver
+# Hands, computer use for agents (hands; pc and desk are its old names): github.com/agentscompany/hands (private), at
+# the release in HANDS_VERSION, checked out into ./hands before the build (the CI does it). `company pc …`
+# (AgentsCompany) and `hands …` (Desks agents) run it.
+COPY hands /tmp/hands
+RUN sh /tmp/hands/install.sh && rm -rf /tmp/hands
 
 WORKDIR /home/ac
 ENV HOME=/home/ac

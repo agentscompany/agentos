@@ -16,16 +16,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Driver version
-        id: driver
-        run: echo "ref=$(cat DRIVER_VERSION)" >> "$GITHUB_OUTPUT"
-      # The driver is a private repository: read with a read-only deploy key (DRIVER_DEPLOY_KEY) or a fine-grained
-      # token limited to reading it (DRIVER_TOKEN). Neither is printed.
+      - name: Hands version
+        id: hands
+        run: echo "ref=$(cat HANDS_VERSION)" >> "$GITHUB_OUTPUT"
+      # Hands is a private repository: read with a read-only deploy key (DRIVER_DEPLOY_KEY) or a fine-grained token
+      # limited to reading it (DRIVER_TOKEN). Neither is printed.
       - uses: actions/checkout@v4
         with:
-          repository: agentscompany/driver
-          ref: ${{ steps.driver.outputs.ref }}
-          path: driver
+          repository: agentscompany/hands
+          ref: ${{ steps.hands.outputs.ref }}
+          path: hands
           ssh-key: ${{ secrets.DRIVER_DEPLOY_KEY }}
           token: ${{ secrets.DRIVER_TOKEN || github.token }}
           persist-credentials: false
