@@ -26,8 +26,9 @@ prepares the home directory and starts the desktop as `ac` (`pc-desktop`).
   official installers.
 
 **The `hands` command** comes from [Hands](https://github.com/agentscompany/hands) (computer use for agents),
-installed at a fixed release (the tag in `HANDS_VERSION`): windows, one window's elements as text plus a screenshot,
-actions by element number, and pixel actions. Bots use it through `company pc …` (`pc` is an old name of `hands`);
+installed at a fixed release (the tag in `HANDS_VERSION`): windows, any window's elements as text (GTK apps through
+AT-SPI, Chromium pages and Electron apps through their DevTools protocol), actions by element number, the browser's
+tabs, waits and forms, and pixel actions, answered by a daemon (`handsd`) in milliseconds. Bots use it through `company pc …` (`pc` is an old name of `hands`);
 agents on a [Desks](https://github.com/agentscompany/desks) desk run `hands` (or `desk`, its other old name). `tmux` is
 installed for Desks' persistent agent sessions.
 
