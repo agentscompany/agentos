@@ -164,6 +164,13 @@ EOF
 COPY hands /tmp/hands
 RUN sh /tmp/hands/install.sh && rm -rf /tmp/hands
 
+# Identifies as AgentOS (agents asked what they run on say so); ID stays debian so installers that check it (get.docker.com, apt repos) keep working.
+# /etc/os-release links here. The CI passes the release version.
+ARG VERSION=dev
+RUN printf '%s\n' 'NAME="AgentOS"' "VERSION=\"$VERSION\"" 'ID=debian' 'VERSION_ID="13"' \
+      "PRETTY_NAME=\"AgentOS $VERSION (based on Debian 13)\"" 'VERSION_CODENAME=trixie' \
+      'HOME_URL="https://github.com/agentscompany/agentos"' > /usr/lib/os-release
+
 WORKDIR /home/ac
 ENV HOME=/home/ac
 EXPOSE 6080

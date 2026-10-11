@@ -43,5 +43,6 @@ jobs:
         run: |
           docker buildx build --platform linux/arm64,linux/amd64 \
             --label org.opencontainers.image.source=https://github.com/agentscompany/agentos \
+            --build-arg VERSION=${{ steps.v.outputs.version }} \
             -t ghcr.io/agentscompany/agentos:${{ steps.v.outputs.version }} \
             -t ghcr.io/agentscompany/agentos:latest --push .
