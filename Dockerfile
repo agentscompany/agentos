@@ -131,6 +131,19 @@ rm -f /tmp/.X1-lock /tmp/.X11-unix/X1
 Xvnc :1 -geometry 1280x800 -depth 24 -rfbport 5901 -localhost -AlwaysShared -SecurityTypes VncAuth -PasswordFile "$HOME/.vnc/passwd" &
 export DISPLAY=:1
 for i in 1 2 3 4 5 6 7 8 9 10; do [ -e /tmp/.X11-unix/X1 ] && break; sleep 0.3; done
+# Esconde o ponteiro X (XFixes, vale enquanto o processo viver): o Xvnc o desenha na imagem quando algo que não é o
+# viewer o move, e o app/página já desenha o cursor dos agentes; quem assume usa o ponteiro do próprio navegador.
+python3 -c '
+import ctypes, time
+x, f = ctypes.CDLL("libX11.so.6"), ctypes.CDLL("libXfixes.so.3")
+x.XOpenDisplay.restype = ctypes.c_void_p
+x.XDefaultRootWindow.argtypes, x.XDefaultRootWindow.restype = [ctypes.c_void_p], ctypes.c_ulong
+f.XFixesHideCursor.argtypes, x.XFlush.argtypes = [ctypes.c_void_p, ctypes.c_ulong], [ctypes.c_void_p]
+d = x.XOpenDisplay(b":1")
+f.XFixesHideCursor(d, x.XDefaultRootWindow(d))
+x.XFlush(d)
+while True: time.sleep(3600)
+' &
 hsetroot -solid "${AC_TINT:-#d6d6db}"   # cor lisa; o app troca para a cor do bot (pc tint)
 openbox &
 picom -b
