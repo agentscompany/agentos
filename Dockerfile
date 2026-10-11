@@ -106,6 +106,8 @@ shadow-opacity = 0.35;
 shadow-offset-x = -14;
 shadow-offset-y = -10;
 corner-radius = 10;
+# Repaint the whole screen each frame: with damage tracking, Xvnc left stale wallpaper patches over overlapping windows.
+use-damage = false;
 fading = true;
 fade-delta = 6;
 rounded-corners-exclude = [ "window_type = 'desktop'" ];
@@ -120,6 +122,29 @@ if [ -n "$AC_UID" ] && [ "$(id -u ac)" != "$AC_UID" ]; then usermod -u "$AC_UID"
 chown ac:ac /home/ac
 [ -f /home/ac/.profile ] || runuser -u ac -- cp -rn /etc/skel/. /home/ac/
 exec runuser -u ac -- pc-desktop
+EOF
+
+COPY --chmod=755 <<'EOF' /usr/local/bin/pc-tile
+#!/bin/sh
+# Agents' Chromium windows (one profile per agent in ~/.config/chromium-bots) share the screen: with 2 or more, a grid
+# in the area where a browser opens (openbox's 92% x 81% box); with one, that box. It only acts when the set of windows
+# changes, so arranging them by hand still holds. (Chromium draws its own title bar: no frame to allow for.)
+X0=51 Y0=36 W=1177 H=648 GAP=10
+last=""
+while sleep 1; do
+  ws=$(/usr/bin/xdotool search --onlyvisible --classname 'chromium-bots/' 2>/dev/null | sort -n | tr '\n' ' ')
+  [ "$ws" = "$last" ] && continue
+  last=$ws; set -- $ws; n=$#
+  [ "$n" -gt 0 ] || continue
+  cols=1; while [ $((cols * cols)) -lt "$n" ]; do cols=$((cols + 1)); done
+  rows=$(( (n + cols - 1) / cols ))
+  w=$(( (W - GAP * (cols - 1)) / cols )); h=$(( (H - GAP * (rows - 1)) / rows ))
+  i=0
+  for win; do
+    /usr/bin/xdotool windowsize "$win" "$w" "$h" windowmove "$win" $((X0 + i % cols * (w + GAP))) $((Y0 + i / cols * (h + GAP)))
+    i=$((i + 1))
+  done
+done
 EOF
 
 COPY --chmod=755 <<'EOF' /usr/local/bin/pc-desktop
@@ -147,6 +172,7 @@ while True: time.sleep(3600)
 hsetroot -solid "${AC_TINT:-#d6d6db}"   # cor lisa; o app troca para a cor do bot (pc tint)
 openbox &
 picom -b
+pc-tile &
 exec websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5901
 EOF
 
